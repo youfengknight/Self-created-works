@@ -1,0 +1,416 @@
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏格子线稿生成器</title>
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#64748b',
+                        neutral: '#f1f5f9',
+                        dark: '#1e293b'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .grid-container {
+                position: relative;
+                overflow: auto;
+                background-color: white;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            }
+            
+            .grid-canvas {
+                display: block;
+                margin: 0 auto;
+            }
+            
+            .control-panel {
+                background-color: #f8fafc;
+                border-radius: 0.5rem;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+            
+            .slider-container {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .slider-container label {
+                width: 120px;
+                font-size: 0.875rem;
+                color: #64748b;
+            }
+            
+            .slider-container input[type="range"] {
+                flex-grow: 1;
+                height: 6px;
+                background: #e2e8f0;
+                border-radius: 3px;
+                outline: none;
+                -webkit-appearance: none;
+            }
+            
+            .slider-container input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 18px;
+                height: 18px;
+                background: #3b82f6;
+                border-radius: 50%;
+                cursor: pointer;
+                transition: background 0.15s ease;
+            }
+            
+            .slider-container input[type="range"]::-webkit-slider-thumb:hover {
+                background: #2563eb;
+            }
+            
+            .slider-value {
+                width: 50px;
+                text-align: right;
+                font-size: 0.875rem;
+                color: #64748b;
+            }
+            
+            .color-picker {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .color-preview {
+                width: 24px;
+                height: 24px;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: transform 0.15s ease;
+            }
+            
+            .color-preview:hover {
+                transform: scale(1.1);
+            }
+            
+            .btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.5rem;
+                padding: 0.5rem 1rem;
+                border-radius: 0.375rem;
+                font-weight: 500;
+                transition: all 0.15s ease;
+                cursor: pointer;
+            }
+            
+            .btn-primary {
+                background-color: #3b82f6;
+                color: white;
+            }
+            
+            .btn-primary:hover {
+                background-color: #2563eb;
+            }
+            
+            .btn-outline {
+                background-color: transparent;
+                border: 1px solid #e2e8f0;
+                color: #64748b;
+            }
+            
+            .btn-outline:hover {
+                background-color: #f1f5f9;
+            }
+            
+            .preset-btn {
+                padding: 0.25rem 0.5rem;
+                border-radius: 0.25rem;
+                font-size: 0.75rem;
+                transition: all 0.15s ease;
+                cursor: pointer;
+            }
+            
+            .preset-btn.active {
+                background-color: #3b82f6;
+                color: white;
+            }
+            
+            .preset-btn:not(.active) {
+                background-color: #f1f5f9;
+                color: #64748b;
+            }
+            
+            .preset-btn:not(.active):hover {
+                background-color: #e2e8f0;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">游戏格子线稿生成器</h1>
+            <p class="text-gray-600">快速生成20×10的游戏格子线稿，用于关卡设计和原型制作</p>
+        </header>
+        
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- 控制面板 -->
+            <div class="control-panel p-6 lg:w-1/4">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">参数控制</h2>
+                
+                <div class="mb-6">
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">网格尺寸</h3>
+                    <div class="slider-container">
+                        <label for="columns">列数</label>
+                        <input type="range" id="columns" min="5" max="30" value="20" class="slider">
+                        <span id="columns-value" class="slider-value">20</span>
+                    </div>
+                    <div class="slider-container">
+                        <label for="rows">行数</label>
+                        <input type="range" id="rows" min="5" max="20" value="10" class="slider">
+                        <span id="rows-value" class="slider-value">10</span>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">单元格大小</h3>
+                    <div class="slider-container">
+                        <label for="cell-size">大小 (px)</label>
+                        <input type="range" id="cell-size" min="10" max="50" value="30" class="slider">
+                        <span id="cell-size-value" class="slider-value">30</span>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">线条样式</h3>
+                    <div class="slider-container">
+                        <label for="line-width">线宽 (px)</label>
+                        <input type="range" id="line-width" min="1" max="5" value="1" class="slider">
+                        <span id="line-width-value" class="slider-value">1</span>
+                    </div>
+                    
+                    <div class="color-picker">
+                        <label for="line-color">线条颜色</label>
+                        <div id="color-preview" class="color-preview" style="background-color: #000000;"></div>
+                        <input type="color" id="line-color" value="#000000" class="hidden">
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">预设</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button class="preset-btn active" data-preset="default">默认 (20×10)</button>
+                        <button class="preset-btn" data-preset="small">小型 (10×10)</button>
+                        <button class="preset-btn" data-preset="large">大型 (30×20)</button>
+                        <button class="preset-btn" data-preset="wide">宽屏 (30×10)</button>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button id="download-btn" class="btn btn-primary flex-1">
+                        <i class="fa fa-download"></i> 下载图片
+                    </button>
+                    <button id="reset-btn" class="btn btn-outline">
+                        <i class="fa fa-refresh"></i> 重置
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 网格预览区 -->
+            <div class="grid-container flex-1 p-4 bg-white rounded-lg">
+                <canvas id="grid-canvas" class="grid-canvas"></canvas>
+            </div>
+        </div>
+        
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <p>© 2025 游戏格子线稿生成器 | 为游戏开发者设计</p>
+        </footer>
+    </div>
+
+    <script>
+        // 获取DOM元素
+        const canvas = document.getElementById('grid-canvas');
+        const ctx = canvas.getContext('2d');
+        const columnsInput = document.getElementById('columns');
+        const rowsInput = document.getElementById('rows');
+        const cellSizeInput = document.getElementById('cell-size');
+        const lineWidthInput = document.getElementById('line-width');
+        const lineColorInput = document.getElementById('line-color');
+        const colorPreview = document.getElementById('color-preview');
+        const columnsValue = document.getElementById('columns-value');
+        const rowsValue = document.getElementById('rows-value');
+        const cellSizeValue = document.getElementById('cell-size-value');
+        const lineWidthValue = document.getElementById('line-width-value');
+        const downloadBtn = document.getElementById('download-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const presetBtns = document.querySelectorAll('.preset-btn');
+        
+        // 默认参数
+        let params = {
+            columns: 20,
+            rows: 10,
+            cellSize: 30,
+            lineWidth: 1,
+            lineColor: '#000000'
+        };
+        
+        // 预设配置
+        const presets = {
+            default: { columns: 20, rows: 10, cellSize: 30, lineWidth: 1, lineColor: '#000000' },
+            small: { columns: 10, rows: 10, cellSize: 40, lineWidth: 1, lineColor: '#000000' },
+            large: { columns: 30, rows: 20, cellSize: 20, lineWidth: 1, lineColor: '#000000' },
+            wide: { columns: 30, rows: 10, cellSize: 30, lineWidth: 1, lineColor: '#000000' }
+        };
+        
+        // 初始化函数
+        function init() {
+            // 设置初始参数
+            updateInputs();
+            
+            // 渲染网格
+            renderGrid();
+            
+            // 添加事件监听器
+            addEventListeners();
+        }
+        
+        // 更新输入控件值
+        function updateInputs() {
+            columnsInput.value = params.columns;
+            rowsInput.value = params.rows;
+            cellSizeInput.value = params.cellSize;
+            lineWidthInput.value = params.lineWidth;
+            lineColorInput.value = params.lineColor;
+            colorPreview.style.backgroundColor = params.lineColor;
+            
+            columnsValue.textContent = params.columns;
+            rowsValue.textContent = params.rows;
+            cellSizeValue.textContent = params.cellSize;
+            lineWidthValue.textContent = params.lineWidth;
+        }
+        
+        // 渲染网格
+        function renderGrid() {
+            // 设置画布尺寸
+            canvas.width = params.columns * params.cellSize + params.lineWidth;
+            canvas.height = params.rows * params.cellSize + params.lineWidth;
+            
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 设置线条样式
+            ctx.lineWidth = params.lineWidth;
+            ctx.strokeStyle = params.lineColor;
+            
+            // 绘制垂直线
+            for (let x = 0; x <= params.columns * params.cellSize; x += params.cellSize) {
+                ctx.beginPath();
+                ctx.moveTo(x + params.lineWidth / 2, 0);
+                ctx.lineTo(x + params.lineWidth / 2, canvas.height);
+                ctx.stroke();
+            }
+            
+            // 绘制水平线
+            for (let y = 0; y <= params.rows * params.cellSize; y += params.cellSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y + params.lineWidth / 2);
+                ctx.lineTo(canvas.width, y + params.lineWidth / 2);
+                ctx.stroke();
+            }
+        }
+        
+        // 添加事件监听器
+        function addEventListeners() {
+            // 输入控件事件
+            columnsInput.addEventListener('input', function() {
+                params.columns = parseInt(this.value);
+                columnsValue.textContent = params.columns;
+                renderGrid();
+            });
+            
+            rowsInput.addEventListener('input', function() {
+                params.rows = parseInt(this.value);
+                rowsValue.textContent = params.rows;
+                renderGrid();
+            });
+            
+            cellSizeInput.addEventListener('input', function() {
+                params.cellSize = parseInt(this.value);
+                cellSizeValue.textContent = params.cellSize;
+                renderGrid();
+            });
+            
+            lineWidthInput.addEventListener('input', function() {
+                params.lineWidth = parseInt(this.value);
+                lineWidthValue.textContent = params.lineWidth;
+                renderGrid();
+            });
+            
+            lineColorInput.addEventListener('input', function() {
+                params.lineColor = this.value;
+                colorPreview.style.backgroundColor = params.lineColor;
+                renderGrid();
+            });
+            
+            colorPreview.addEventListener('click', function() {
+                lineColorInput.click();
+            });
+            
+            // 下载按钮
+            downloadBtn.addEventListener('click', function() {
+                const link = document.createElement('a');
+                link.download = `grid_${params.columns}x${params.rows}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+            
+            // 重置按钮
+            resetBtn.addEventListener('click', function() {
+                params = JSON.parse(JSON.stringify(presets.default));
+                updateInputs();
+                renderGrid();
+                
+                // 更新预设按钮状态
+                presetBtns.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.preset === 'default');
+                });
+            });
+            
+            // 预设按钮
+            presetBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const presetName = this.dataset.preset;
+                    params = JSON.parse(JSON.stringify(presets[presetName]));
+                    updateInputs();
+                    renderGrid();
+                    
+                    // 更新预设按钮状态
+                    presetBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+            
+            // 窗口大小变化时重新渲染
+            window.addEventListener('resize', renderGrid);
+        }
+        
+        // 初始化应用
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+
+
+</body></html>
